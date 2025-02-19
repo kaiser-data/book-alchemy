@@ -1,7 +1,7 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 import os
 import sqlalchemy
+from data_models import db, Author, Book
 
 # Initialize the Flask application
 app = Flask(__name__)
@@ -17,8 +17,7 @@ os.makedirs(os.path.dirname(os.path.abspath(database_file)), exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = database_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Disable modification tracking for performance
 
-# Initialize the SQLAlchemy extension
-db = SQLAlchemy(app)
+
 
 # Define models (if not already defined in a separate module)
 class Author(db.Model):
