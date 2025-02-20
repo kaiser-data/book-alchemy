@@ -17,77 +17,33 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize the database with the app
 db.init_app(app)
 
-
-def seed_initial_data():
-    """Seed the database with initial data if tables are empty."""
-    try:
-        if not Author.query.first() and not Book.query.first():
-            print("Seeding initial data...")
-
-            # Sample authors
-            authors_data = [
-                {"name": "J.K. Rowling", "birth_date": "1965-07-31"},
-                {"name": "George Orwell", "birth_date": "1903-06-25", "date_of_death": "1950-01-21"},
-                {"name": "Agatha Christie", "birth_date": "1890-09-15", "date_of_death": "1976-01-12"},
-                {"name": "Ernest Hemingway", "birth_date": "1899-07-21", "date_of_death": "1961-07-02"},
-                {"name": "Jane Austen", "birth_date": "1775-12-16", "date_of_death": "1817-07-18"}
-            ]
-
-            # Convert string dates to Date objects
-            for author_data in authors_data:
-                author = Author(
-                    name=author_data["name"],
-                    birth_date=datetime.strptime(author_data["birth_date"], "%Y-%m-%d").date() if author_data.get(
-                        "birth_date") else None,
-                    date_of_death=datetime.strptime(author_data["date_of_death"], "%Y-%m-%d").date() if author_data.get(
-                        "date_of_death") else None
-                )
-                db.session.add(author)
-
-            db.session.commit()  # Commit authors first to get IDs
-
-            # Sample books
-            books_data = [
-                {"isbn": "9780545010221", "title": "Harry Potter and the Sorcerer's Stone", "publication_year": 1997,
-                 "author_id": 1},
-                {"isbn": "9780451524935", "title": "1984", "publication_year": 1949, "author_id": 2},
-                {"isbn": "9780062073480", "title": "Murder on the Orient Express", "publication_year": 1934,
-                 "author_id": 3},
-                {"isbn": "9780684801223", "title": "The Old Man and the Sea", "publication_year": 1952, "author_id": 4},
-                {"isbn": "9780141439518", "title": "Pride and Prejudice", "publication_year": 1813, "author_id": 5}
-            ]
-
-            for book_data in books_data:
-                book = Book(**book_data)
-                db.session.add(book)
-
-            db.session.commit()
-
-            print("Database initialized successfully.")
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error initializing database: {e}")
-
-
-# Set up the database and seed data
+# Ensure tables are created
 with app.app_context():
     db.create_all()
-    seed_initial_data()
 
 
 # Routes
-@app.route('/')
+@app.route('/', methods=['GET'])
 def home():
-    """Home page route that shows all books with optional sorting."""
-    sort_by = request.args.get('sort_by', 'title')
+    """Home page route that shows all books with optional sorting and keyword search."""
+    sort_by = request.args.get('sort_by', 'title')  # Default sorting by title
+    search_query = request.args.get('search', '').strip()  # Get the search query
 
-    if sort_by == 'author':
-        books = Book.query.join(Author).order_by(Author.name.asc()).all()
-    else:  # Default to title sorting
-        books = Book.query.order_by(Book.title.asc()).all()
+    if search_query:
+        # Perform a case-insensitive search for the keyword in the title or author name
+        books = Book.query.filter(
+            (Book.title.ilike(f"%{search_query}%")) |
+            (Author.name.ilike(f"%{search_query}%"))
+        ).join(Author).all()
+    else:
+        # Sort books based on the selected option
+        if sort_by == 'author':
+            books = Book.query.join(Author).order_by(Author.name.asc()).all()
+        else:  # Default to title sorting
+            books = Book.query.order_by(Book.title.asc()).all()
 
     authors = Author.query.order_by(Author.name.asc()).all()
-    return render_template('home.html', books=books, authors=authors)
+    return render_template('home.html', books=books, authors=authors, search_query=search_query)
 
 
 @app.route('/add_author', methods=['POST'])
@@ -113,7 +69,6 @@ def add_author():
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding author: {str(e)}', 'error')
-
     return redirect(url_for('home'))
 
 
@@ -121,7 +76,6 @@ def add_author():
 def add_book():
     """Add a new book to the database."""
     try:
-        # Get form data
         isbn = request.form.get('isbn')
         title = request.form.get('title')
         publication_year = request.form.get('publication_year')
@@ -132,7 +86,6 @@ def add_book():
             flash('All fields are required', 'error')
             return redirect(url_for('home'))
 
-        # Create and save the book
         book = Book(
             isbn=isbn,
             title=title,
@@ -148,18 +101,29 @@ def add_book():
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding book: {str(e)}', 'error')
-
     return redirect(url_for('home'))
 
 
-@app.route('/delete_book/<int:book_id>', methods=['POST'])
+# Delete a book
+@app.route('/book/<int:book_id>/delete', methods=['POST'])
 def delete_book(book_id):
-    """Delete a book from the database."""
     try:
+        # Find the book by ID
         book = Book.query.get_or_404(book_id)
+
+        # Delete the book
         db.session.delete(book)
         db.session.commit()
-        flash(f'Book "{book.title}" deleted successfully', 'success')
+
+        # Check if the author has any other books left
+        author = Author.query.get(book.author_id)
+        if author and not author.books:
+            # Delete the author if they have no books
+            db.session.delete(author)
+            db.session.commit()
+            flash(f'Author "{author.name}" was also deleted as they had no remaining books.', 'success')
+
+        flash(f'Book "{book.title}" deleted successfully.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting book: {str(e)}', 'error')
@@ -179,7 +143,6 @@ def delete_author(author_id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting author: {str(e)}', 'error')
-
     return redirect(url_for('home'))
 
 
