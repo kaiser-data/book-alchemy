@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System</title>
+</head>
+<body>
+    <h1>Home Page</h1>
+
+    <!-- Sorting Options -->
+    <div>
+        <a href="{{ url_for('home', sort_by='title') }}">Sort by Title</a> |
+        <a href="{{ url_for('home', sort_by='author') }}">Sort by Author</a>
+    </div>
+
+    <!-- Display Books -->
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Cover</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Publication Year</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for book in books %}
+            <tr>
+                <td>
+                    <!-- Fetch book cover image using ISBN from an external API -->
+                    <img src="https://covers.openlibrary.org/b/isbn/{{ book.isbn }}-M.jpg" alt="Cover for {{ book.title }}" width="100">
+                </td>
+                <td>{{ book.title }}</td>
+                <td>{{ book.author.name if book.author else 'Unknown' }}</td>
+                <td>{{ book.publication_year }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

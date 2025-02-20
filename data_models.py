@@ -43,3 +43,7 @@ class Book(db.Model):
         """Custom string representation for meaningful output."""
         return f"Book: {self.title} by {self.author.name if self.author else 'Unknown'}"
 
+# Uncomment this block only when you want to create the tables initially
+# from app import app  # Import the Flask app instance
+# with app.app_context():
+#     db.create_all()
