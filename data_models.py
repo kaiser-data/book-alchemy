@@ -8,13 +8,13 @@ class Author(db.Model):
     __tablename__ = 'author'
 
     # Columns for the Author model
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)  # Auto-incrementing primary key
-    name = db.Column(db.String(100), nullable=False)  # Name of the author (required)
-    birth_date = db.Column(db.Date, nullable=True)  # Birth date of the author (optional)
-    date_of_death = db.Column(db.Date, nullable=True)  # Date of death of the author (optional)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(100), nullable=False)
+    birth_date = db.Column(db.Date, nullable=True)
+    date_of_death = db.Column(db.Date, nullable=True)
 
     # Relationship with the Book model
-    books = db.relationship('Book', backref='author', lazy=True)
+    books = db.relationship('Book', backref='author', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         """Custom representation for debugging purposes."""
@@ -22,18 +22,19 @@ class Author(db.Model):
 
     def __str__(self):
         """Custom string representation for meaningful output."""
-        return f"Author: {self.name}"
+        return self.name
+
 
 # Define the Book model
 class Book(db.Model):
     __tablename__ = 'book'
 
     # Columns for the Book model
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)  # Auto-incrementing primary key
-    isbn = db.Column(db.String(20), unique=True, nullable=False)  # ISBN of the book (unique and required)
-    title = db.Column(db.String(150), nullable=False)  # Title of the book (required)
-    publication_year = db.Column(db.Integer, nullable=False)  # Publication year of the book (required)
-    author_id = db.Column(db.Integer, db.ForeignKey('author.id'), nullable=False)  # Foreign key to the Author table
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    isbn = db.Column(db.String(20), unique=True, nullable=False, index=True)
+    title = db.Column(db.String(150), nullable=False, index=True)
+    publication_year = db.Column(db.Integer, nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('author.id', ondelete='CASCADE'), nullable=False)
 
     def __repr__(self):
         """Custom representation for debugging purposes."""
@@ -41,9 +42,4 @@ class Book(db.Model):
 
     def __str__(self):
         """Custom string representation for meaningful output."""
-        return f"Book: {self.title} by {self.author.name if self.author else 'Unknown'}"
-
-# Uncomment this block only when you want to create the tables initially
-# from app import app  # Import the Flask app instance
-# with app.app_context():
-#     db.create_all()
+        return f"{self.title}"
