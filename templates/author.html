@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ author.name }} - Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Library Management System</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+        </nav>
+    </header>
+
+    <main class="author-details">
+        <h2>{{ author.name }}</h2>
+        <p><strong>Birth Date:</strong> {{ author.birth_date.strftime('%Y-%m-%d') if author.birth_date else 'Unknown' }}</p>
+        <p><strong>Date of Death:</strong> {{ author.date_of_death.strftime('%Y-%m-%d') if author.date_of_death else 'Alive' }}</p>
+
+        <h3>Books by {{ author.name }}</h3>
+        {% if author.books %}
+        <ul>
+            {% for book in author.books %}
+            <li>
+                <a href="{{ url_for('book_details', book_id=book.id) }}">{{ book.title }}</a>
+                (<em>Published in {{ book.publication_year }}</em>)
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No books available for this author.</p>
+        {% endif %}
+
+        <!-- Link back to the home page -->
+        <a href="{{ url_for('home') }}" class="back-link">Back to Home</a>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Library Management System</p>
+    </footer>
+</body>
+</html>

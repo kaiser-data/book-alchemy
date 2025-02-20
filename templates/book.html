@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ book.title }} - Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Library Management System</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+        </nav>
+    </header>
+
+    <main class="book-details">
+        <h2>{{ book.title }}</h2>
+        <p><strong>Author:</strong> {{ book.author.name if book.author else 'Unknown' }}</p>
+        <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+        <p><strong>Publication Year:</strong> {{ book.publication_year }}</p>
+        <p><strong>Description:</strong> {{ book.description if book.description else 'No description available.' }}</p>
+
+        <!-- Link back to the home page -->
+        <a href="{{ url_for('home') }}" class="back-link">Back to Home</a>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Library Management System</p>
+    </footer>
+</body>
+</html>
