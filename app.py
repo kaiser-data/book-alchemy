@@ -2,12 +2,22 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from data_models import db, Author, Book
 from datetime import datetime
-import sqlalchemy
 from dotenv import load_dotenv
-
-import os
 import openai
+import sqlalchemy
 
+# Load environment variables from .env file
+load_dotenv()
+
+# Retrieve OpenAI API key from environment variables
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise ValueError("OpenAI API key not found. Please set the OPENAI_API_KEY in your .env file.")
+
+base_url="https://openrouter.ai/api/v1"
+
+# Initialize OpenAI client
+client = openai.OpenAI(api_key=openai_api_key, base_url=base_url)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -15,7 +25,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key')
 
 # Configure database
 DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'library.sqlite')
-os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)  # Ensure the 'data' directory exists
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DATABASE_PATH}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -49,16 +59,22 @@ def home():
                 db.session.commit()
                 flash(f'Rating for "{book.title}" updated successfully.', 'success')
             except Exception as e:
+                db.session.rollback()
                 flash(f'Error updating rating: {str(e)}', 'error')
 
     sort_by = request.args.get('sort_by', 'title')  # Default sorting by title
     search_query = request.args.get('search', '').strip()  # Get the search query
 
     if search_query:
-        books = Book.query.filter(
-            (Book.title.ilike(f"%{search_query}%")) |
-            (Author.name.ilike(f"%{search_query}%"))
-        ).join(Author).all()
+        books = (
+            Book.query
+            .join(Author)
+            .filter(
+                Book.title.ilike(f"%{search_query}%") |
+                Author.name.ilike(f"%{search_query}%")
+            )
+            .all()
+        )
     else:
         if sort_by == 'author':
             books = Book.query.join(Author).order_by(Author.name.asc()).all()
@@ -167,13 +183,14 @@ def delete_author(author_id):
 @app.route('/book/<int:book_id>')
 def book_details(book_id):
     """Display detailed information about a specific book."""
-    book = Book.query.get_or_404(book_id)  # Ensure the book exists, or return a 404 error
+    book = Book.query.get_or_404(book_id)
     return render_template('book.html', book=book)
+
 
 @app.route('/author/<int:author_id>')
 def author_details(author_id):
     """Display detailed information about a specific author."""
-    author = Author.query.get_or_404(author_id)  # Ensure the author exists, or return a 404 error
+    author = Author.query.get_or_404(author_id)
     return render_template('author.html', author=author)
 
 
@@ -182,41 +199,68 @@ def page_not_found(e):
     """Handle 404 errors."""
     return render_template('404.html'), 404
 
+
 @app.errorhandler(500)
 def internal_server_error(e):
+    """Handle 500 errors."""
     return render_template('500.html'), 500
 
 
-# Load environment variables from .env file
-load_dotenv()
+@app.route('/book/<int:book_id>/update_rating', methods=['POST'])
+def update_rating(book_id):
+    """Update the rating for a specific book."""
+    book = Book.query.get_or_404(book_id)
+    rating = request.form.get('rating')
 
-# Retrieve the OpenAI API key from the environment variable
-openai.api_key = os.getenv("OPENAI_API_KEY")
+    if rating:
+        try:
+            book.rating = int(rating) if 1 <= int(rating) <= 10 else None
+            db.session.commit()
+            flash(f'Rating for "{book.title}" updated successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating rating: {str(e)}', 'error')
+    else:
+        flash('Please select a valid rating between 1 and 10.', 'error')
 
-# Check if the API key is loaded correctly
-if not openai.api_key:
-    raise ValueError("OpenAI API key not found. Please set the OPENAI")
+    return redirect(url_for('home'))
 
-openai.base_url = "https://api.aimlapi.com/v1"
 
 @app.route('/recommend_book', methods=['GET'])
 def recommend_book():
     """Generate a book recommendation using AI."""
     books_read = Book.query.filter(Book.rating.isnot(None)).all()  # Get books with ratings
+
     if not books_read:
         flash('You need to rate some books first!', 'info')
         return redirect(url_for('home'))
 
     # Prepare the prompt for ChatGPT
     prompt = "Based on the following books I've read:\n"
+    char_count = 0  # Track the character count of the prompt
+    max_chars = 200  # Adjust this value based on the API's limit (leave room for system and user messages)
+
     for book in books_read:
-        prompt += f"- '{book.title}' by {book.author.name}, rated {book.rating}/10\n"
+        book_info = f"- '{book.title}' by {book.author.name}, rated {book.rating}/10\n"
+        if char_count + len(book_info) > max_chars:
+            break  # Stop adding books if the prompt exceeds the limit
+        prompt += book_info
+        char_count += len(book_info)
+
     prompt += "\nRecommend a new book for me to read."
 
     try:
-        # Call the OpenAI API
-        response = openai.ChatCompletion.create(
-            model="mistralai/Mistral-7B-Instruct-v0.2",
+        # Retrieve OpenAI API key from environment variables
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        if not openai.api_key:
+            raise ValueError("OpenAI API key not found. Please set the OPENAI_API_KEY in your .env file.")
+
+        # Set the custom base URL for the AI API
+        client.base_url = "https://openrouter.ai/api/v1"
+
+        # Call the AI API with the truncated prompt
+        response = client.chat.completions.create(
+            model="deepseek/deepseek-r1:free",
             messages=[
                 {"role": "system", "content": "You are a helpful book recommendation assistant."},
                 {"role": "user", "content": prompt},
@@ -230,6 +274,7 @@ def recommend_book():
         recommendation = f"Error generating recommendation: {str(e)}"
 
     return render_template('recommendation.html', recommendation=recommendation)
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)))
