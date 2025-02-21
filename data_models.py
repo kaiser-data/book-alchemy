@@ -35,6 +35,8 @@ class Book(db.Model):
     title = db.Column(db.String(150), nullable=False, index=True)
     publication_year = db.Column(db.Integer, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('author.id', ondelete='CASCADE'), nullable=False)
+    rating = db.Column(db.Integer, nullable=True)  # New column for book ratings (1-10)
+    description = db.Column(db.Text, nullable=True)  # Optional: Add a description field
 
     def __repr__(self):
         """Custom representation for debugging purposes."""
