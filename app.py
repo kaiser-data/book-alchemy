@@ -36,6 +36,7 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+
 # Helper function for date conversion
 def parse_date(date_str):
     """Converts a string to a Date object if valid, otherwise returns None."""
@@ -45,6 +46,7 @@ def parse_date(date_str):
         return None
 
 # Routes
+
 
 @app.route('/', methods=['GET', 'POST'])
 def home():

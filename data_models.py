@@ -17,11 +17,11 @@ class Author(db.Model):
     books = db.relationship('Book', backref='author', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
-        """Custom representation for debugging purposes."""
+        """Custom representation"""
         return f"<Author(id={self.id}, name='{self.name}')>"
 
     def __str__(self):
-        """Custom string representation for meaningful output."""
+        """string representation ."""
         return self.name
 
 
@@ -39,9 +39,9 @@ class Book(db.Model):
     description = db.Column(db.Text, nullable=True)  # Optional: Add a description field
 
     def __repr__(self):
-        """Custom representation for debugging purposes."""
+        """Custom representation """
         return f"<Book(id={self.id}, title='{self.title}', author_id={self.author_id})>"
 
     def __str__(self):
-        """Custom string representation for meaningful output."""
+        """string representation """
         return f"{self.title}"
