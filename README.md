@@ -139,8 +139,8 @@ The application uses SQLite as the database backend. The schema consists of two 
 
 The application integrates with an AI API to generate book recommendations. By default, it uses the OpenAI API with the following configuration:
 
-- **Base URL**: `https://api.aimlapi.com/v1`
-- **Model**: `meta-llama/Llama-2-13b-chat-hf` (or another supported model)
+- **Base URL**:"https://openrouter.ai/api/v1"
+- **Model**: `"deepseek/deepseek-r1:free"` (or another supported model)
 
 Ensure you have a valid API key and update the `.env` file accordingly.
 
